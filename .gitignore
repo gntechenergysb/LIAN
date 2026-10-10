@@ -1,0 +1,20 @@
+# 依赖
+node_modules/
+
+# 构建产物
+.next/
+out/
+
+# 数据库（本地 SQLite 文件，不入库）
+data/
+
+# 上传文件（用户头像/收款码，不入库）
+public/uploads/
+
+# 环境变量
+.env
+.env*.local
+
+# 日志与系统文件
+*.log
+.DS_Store
