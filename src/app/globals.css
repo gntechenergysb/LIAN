@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+:root {
+  --font-cjk: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+}
+
+body {
+  font-family: var(--font-cjk);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 主题变量 ---------- */
+.theme-xuanzhi {
+  --lian-bg: #f4eee1;
+  --lian-bg2: #ece3d0;
+  --lian-ink: #2e2820;
+  --lian-muted: #8a7d68;
+  --lian-accent: #b03a2e;
+  --lian-on-accent: #fdf8ef;
+  --lian-card: #fffdf6;
+  --lian-border: #e2d7bd;
+  --lian-shadow: 0 8px 24px rgba(120, 96, 60, 0.12);
+}
+.theme-shuimo {
+  --lian-bg: #efede8;
+  --lian-bg2: #e3e0d8;
+  --lian-ink: #1d1d1f;
+  --lian-muted: #77767a;
+  --lian-accent: #1d1d1f;
+  --lian-on-accent: #f5f4f0;
+  --lian-card: #fbfaf7;
+  --lian-border: #d8d5cc;
+  --lian-shadow: 0 8px 24px rgba(30, 30, 30, 0.10);
+}
+.theme-ying {
+  --lian-bg: #fdf1f4;
+  --lian-bg2: #f9e2e9;
+  --lian-ink: #4c2c36;
+  --lian-muted: #a07c88;
+  --lian-accent: #d96a8f;
+  --lian-on-accent: #fff9fb;
+  --lian-card: #fffbfd;
+  --lian-border: #f3d3dd;
+  --lian-shadow: 0 8px 24px rgba(217, 106, 143, 0.14);
+}
+.theme-qingci {
+  --lian-bg: #edf3f0;
+  --lian-bg2: #dde8e3;
+  --lian-ink: #2c3a37;
+  --lian-muted: #7d948e;
+  --lian-accent: #5d8f86;
+  --lian-on-accent: #f4faf8;
+  --lian-card: #fbfefd;
+  --lian-border: #cbddd6;
+  --lian-shadow: 0 8px 24px rgba(93, 143, 134, 0.14);
+}
+.theme-zhusha {
+  --lian-bg: #8e2f24;
+  --lian-bg2: #7a271e;
+  --lian-ink: #fdf3e7;
+  --lian-muted: #e0b9a8;
+  --lian-accent: #f2b33d;
+  --lian-on-accent: #4a1d12;
+  --lian-card: rgba(255, 251, 243, 0.08);
+  --lian-border: rgba(253, 243, 231, 0.25);
+  --lian-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.theme-yueye {
+  --lian-bg: #0e1a2c;
+  --lian-bg2: #0a1422;
+  --lian-ink: #e9eff8;
+  --lian-muted: #8fa3bd;
+  --lian-accent: #8fb8de;
+  --lian-on-accent: #0e1a2c;
+  --lian-card: rgba(233, 239, 248, 0.06);
+  --lian-border: rgba(233, 239, 248, 0.16);
+  --lian-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- 通用组件类 ---------- */
+.lian-page {
+  background: linear-gradient(180deg, var(--lian-bg) 0%, var(--lian-bg2) 100%);
+  color: var(--lian-ink);
+  min-height: 100vh;
+}
+.lian-card {
+  background: var(--lian-card);
+  border: 1px solid var(--lian-border);
+  box-shadow: var(--lian-shadow);
+  border-radius: 1rem;
+}
+.lian-btn {
+  background: var(--lian-accent);
+  color: var(--lian-on-accent);
+  border-radius: 0.9rem;
+  font-weight: 600;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+.lian-btn:hover { filter: brightness(1.06); }
+.lian-btn:active { transform: scale(0.98); }
+.lian-btn-outline {
+  border: 1px solid var(--lian-border);
+  color: var(--lian-ink);
+  background: transparent;
+  border-radius: 0.9rem;
+  font-weight: 500;
+  transition: background 0.12s ease;
+}
+.lian-btn-outline:hover { background: var(--lian-card); }
+.lian-muted { color: var(--lian-muted); }
+.lian-input {
+  background: var(--lian-card);
+  border: 1px solid var(--lian-border);
+  color: var(--lian-ink);
+  border-radius: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  width: 100%;
+  outline: none;
+}
+.lian-input:focus { border-color: var(--lian-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--lian-accent) 18%, transparent); }
+.lian-input::placeholder { color: var(--lian-muted); }
+
+/* 长辈模式：整体放大 */
+.elder-mode { font-size: 1.18rem; }
+.elder-mode .lian-btn, .elder-mode .lian-btn-outline { padding: 1rem 1.25rem; font-size: 1.2rem; }
+.elder-mode .lian-input { padding: 0.9rem 1rem; font-size: 1.15rem; }
+
+/* 链接按钮悬停上浮 */
+.lian-link {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.lian-link:hover { transform: translateY(-2px); }
+
+/* 宣纸纹理 */
+.theme-xuanzhi .lian-page {
+  background-image:
+    radial-gradient(ellipse at 20% 10%, rgba(176, 58, 46, 0.05), transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgba(120, 96, 60, 0.08), transparent 50%),
+    linear-gradient(180deg, var(--lian-bg) 0%, var(--lian-bg2) 100%);
+}
+/* 月夜星点 */
+.theme-yueye .lian-page {
+  background-image:
+    radial-gradient(1px 1px at 12% 22%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 68% 8%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1.5px 1.5px at 84% 34%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 34% 66%, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1px 1px at 52% 88%, rgba(255,255,255,0.5), transparent),
+    linear-gradient(180deg, var(--lian-bg) 0%, var(--lian-bg2) 100%);
+}
