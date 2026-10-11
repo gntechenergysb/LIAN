@@ -1,1 +1,33 @@
-{"dependencies":{"jose":"^5.9.6","lucide-react":"^0.469.0","next":"^15.1.6","qrcode":"^1.5.4","react":"^19.0.0","react-dom":"^19.0.0"},"description":"链 LIAN · 一链万连 — 亚洲版 bio-link 聚合主页","devDependencies":{"@tailwindcss/postcss":"^4.0.0","@types/node":"^22.10.0","@types/qrcode":"^1.5.5","@types/react":"^19.0.0","@types/react-dom":"^19.0.0","tailwindcss":"^4.0.0","typescript":"^5.7.2"},"name":"lian","private":true,"scripts":{"build":"next build","dev":"next dev","start":"next start"},"version":"1.0.0"}
+{
+  "dependencies": {
+    "jose": "^5.9.6",
+    "lucide-react": "^0.469.0",
+    "next": "^15.1.6",
+    "qrcode": "^1.5.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "description": "链 LIAN · 一链万连 — 亚洲版 bio-link 聚合主页",
+  "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.10",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.10.0",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.149.0"
+  },
+  "name": "lian",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+  },
+  "version": "1.0.0"
+}

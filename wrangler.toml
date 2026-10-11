@@ -1,0 +1,28 @@
+# 链 LIAN · Cloudflare Workers 部署配置
+
+name = "lian"
+main = ".open-next/worker.js"
+compatibility_date = "2025-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+# ---- D1 数据库（SQLite，免运维）----
+# 先运行：npx wrangler d1 create lian-db
+# 把返回的 database_id 填到下面
+[[d1_databases]]
+binding = "DB"
+database_name = "lian-db"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# ---- R2 对象存储（头像 / 收款码上传）----
+# 先运行：npx wrangler r2 bucket create lian-uploads
+[[r2_buckets]]
+binding = "UPLOADS"
+bucket_name = "lian-uploads"
+
+# ---- 公开变量 ----
+[vars]
+LIAN_BASE_URL = ""
+
+# ---- 机密（不要写在这里）----
+# 生产：npx wrangler secret put LIAN_JWT_SECRET
+# 本地 preview：在 .dev.vars 文件里写 LIAN_JWT_SECRET=xxx（已加入 .gitignore）

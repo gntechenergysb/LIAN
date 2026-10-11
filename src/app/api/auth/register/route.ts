@@ -1,6 +1,5 @@
-import crypto from 'node:crypto';
-import { getDb, type UserRow } from '@/lib/db';
-import { hashPassword, verifyPassword, createSession, setSessionCookie, sanitizeUser } from '@/lib/auth';
+import { dbGet, dbRun, type UserRow } from '@/lib/db';
+import { hashPassword, createSession, setSessionCookie, sanitizeUser } from '@/lib/auth';
 import { ok, fail, readJson, validUsername } from '@/lib/api';
 
 export async function POST(req: Request) {
@@ -12,17 +11,22 @@ export async function POST(req: Request) {
     return fail('密码长度需为 6–72 位');
   }
   const name = username.trim().toLowerCase();
-  const db = getDb();
-  const exists = db.prepare('SELECT id FROM users WHERE username = ?').get(name);
+  const exists = await dbGet<{ id: string }>('SELECT id FROM users WHERE username = ?', name);
   if (exists) return fail('这个用户名已经被注册了', 409);
 
   const id = crypto.randomUUID();
   const now = Date.now();
-  db.prepare(
-    'INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES (?, ?, ?, ?, ?)'
-  ).run(id, name, hashPassword(password), typeof display_name === 'string' ? display_name.trim().slice(0, 30) : '', now);
+  await dbRun(
+    'INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES (?, ?, ?, ?, ?)',
+    id,
+    name,
+    await hashPassword(password),
+    typeof display_name === 'string' ? display_name.trim().slice(0, 30) : '',
+    now
+  );
 
-  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as unknown as UserRow;
+  const row = await dbGet<UserRow>('SELECT * FROM users WHERE id = ?', id);
+  if (!row) return fail('注册失败，请重试', 500);
   const token = await createSession(id);
   await setSessionCookie(token);
   return ok({ user: sanitizeUser(row) }, 201);

@@ -1,19 +1,16 @@
-import { getDb, type LinkRow } from '@/lib/db';
+import { dbGet, dbRun, type LinkRow } from '@/lib/db';
 import { ok, fail, readJson, validUrl } from '@/lib/api';
 import { requireAuth } from '@/lib/api';
 
-function ownLink(db: ReturnType<typeof getDb>, id: string, userId: string) {
-  return db.prepare('SELECT * FROM links WHERE id = ? AND user_id = ?').get(id, userId) as
-    | LinkRow
-    | undefined;
+async function ownLink(id: string, userId: string): Promise<LinkRow | null> {
+  return dbGet<LinkRow>('SELECT * FROM links WHERE id = ? AND user_id = ?', id, userId);
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth();
   if (auth instanceof Response) return auth;
   const { id } = await params;
-  const db = getDb();
-  const link = ownLink(db, id, auth.id);
+  const link = await ownLink(id, auth.id);
   if (!link) return fail('链接不存在', 404);
   const body = await readJson(req);
 
@@ -38,8 +35,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
   if (updates.length === 0) return fail('没有可更新的内容');
   values.push(id);
-  db.prepare(`UPDATE links SET ${updates.join(', ')} WHERE id = ?`).run(...(values as never[]));
-  const updated = db.prepare('SELECT * FROM links WHERE id = ?').get(id) as unknown as LinkRow;
+  await dbRun(`UPDATE links SET ${updates.join(', ')} WHERE id = ?`, ...values);
+  const updated = await dbGet<LinkRow>('SELECT * FROM links WHERE id = ?', id);
   return ok({ link: updated });
 }
 
@@ -47,9 +44,8 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const auth = await requireAuth();
   if (auth instanceof Response) return auth;
   const { id } = await params;
-  const db = getDb();
-  const link = ownLink(db, id, auth.id);
+  const link = await ownLink(id, auth.id);
   if (!link) return fail('链接不存在', 404);
-  db.prepare('DELETE FROM links WHERE id = ?').run(id);
+  await dbRun('DELETE FROM links WHERE id = ?', id);
   return ok({ deleted: true });
 }

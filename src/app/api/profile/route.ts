@@ -1,4 +1,4 @@
-import { getDb, type UserRow } from '@/lib/db';
+import { dbGet, dbRun, type UserRow } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
 import { THEMES } from '@/lib/themes';
 import { ok, fail, readJson } from '@/lib/api';
@@ -13,7 +13,6 @@ export async function PATCH(req: Request) {
   const user = await getSessionUser();
   if (!user) return fail('请先登录', 401);
   const body = await readJson(req);
-  const db = getDb();
 
   const updates: string[] = [];
   const params: unknown[] = [];
@@ -41,8 +40,9 @@ export async function PATCH(req: Request) {
   if (updates.length === 0) return fail('没有可更新的内容');
 
   params.push(user.id);
-  db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...(params as never[]));
-  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id) as unknown as UserRow;
+  await dbRun(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, ...params);
+  const row = await dbGet<UserRow>('SELECT * FROM users WHERE id = ?', user.id);
+  if (!row) return fail('用户不存在', 404);
   const { password_hash: _ph, ...rest } = row;
   return ok({ user: rest });
 }

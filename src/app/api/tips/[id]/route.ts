@@ -1,4 +1,4 @@
-import { getDb, type TipRow } from '@/lib/db';
+import { dbGet, dbRun, type TipRow } from '@/lib/db';
 import { ok, fail, readJson } from '@/lib/api';
 import { requireAuth } from '@/lib/api';
 
@@ -6,10 +6,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const auth = await requireAuth();
   if (auth instanceof Response) return auth;
   const { id } = await params;
-  const db = getDb();
-  const tip = db.prepare('SELECT * FROM tips WHERE id = ? AND user_id = ?').get(id, auth.id) as
-    | TipRow
-    | undefined;
+  const tip = await dbGet<TipRow>('SELECT * FROM tips WHERE id = ? AND user_id = ?', id, auth.id);
   if (!tip) return fail('收款码不存在', 404);
   const body = await readJson(req);
   const updates: string[] = [];
@@ -28,17 +25,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
   if (updates.length === 0) return fail('没有可更新的内容');
   values.push(id);
-  db.prepare(`UPDATE tips SET ${updates.join(', ')} WHERE id = ?`).run(...(values as never[]));
-  return ok({ tip: db.prepare('SELECT * FROM tips WHERE id = ?').get(id) as unknown as TipRow });
+  await dbRun(`UPDATE tips SET ${updates.join(', ')} WHERE id = ?`, ...values);
+  return ok({ tip: await dbGet<TipRow>('SELECT * FROM tips WHERE id = ?', id) });
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth();
   if (auth instanceof Response) return auth;
   const { id } = await params;
-  const db = getDb();
-  const tip = db.prepare('SELECT * FROM tips WHERE id = ? AND user_id = ?').get(id, auth.id);
+  const tip = await dbGet<TipRow>('SELECT * FROM tips WHERE id = ? AND user_id = ?', id, auth.id);
   if (!tip) return fail('收款码不存在', 404);
-  db.prepare('DELETE FROM tips WHERE id = ?').run(id);
+  await dbRun('DELETE FROM tips WHERE id = ?', id);
   return ok({ deleted: true });
 }

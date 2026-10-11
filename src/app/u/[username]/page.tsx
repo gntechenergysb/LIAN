@@ -2,11 +2,11 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import QRCode from 'qrcode';
 import { Heart } from 'lucide-react';
-import { getDb, type UserRow, type LinkRow, type TipRow } from '@/lib/db';
-import { getGreeting } from '@/lib/greetings';
+import { dbAll, dbGet, dbRun, type UserRow, type LinkRow, type TipRow } from '@/lib/db';
 import { themeName } from '@/lib/themes';
 import { getBaseUrl } from '@/lib/site';
 import PublicActions from '@/components/PublicActions';
+import GreetingCard from '@/components/GreetingCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,10 +17,10 @@ function todayKey(): string {
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
-  const db = getDb();
-  const user = db.prepare('SELECT display_name, username FROM users WHERE username = ?').get(
+  const user = await dbGet<Pick<UserRow, 'display_name' | 'username'>>(
+    'SELECT display_name, username FROM users WHERE username = ?',
     username.toLowerCase()
-  ) as Pick<UserRow, 'display_name' | 'username'> | undefined;
+  );
   if (!user) return { title: '未找到 · 链 LIAN' };
   return { title: `${user.display_name || user.username} · 链 LIAN` };
 }
@@ -29,25 +29,28 @@ const PROVIDER_LABEL: Record<string, string> = { wechat: '微信打赏', alipay:
 
 export default async function PublicPage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
-  const db = getDb();
-  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(
+  const user = await dbGet<UserRow>(
+    'SELECT * FROM users WHERE username = ?',
     username.toLowerCase()
-  ) as unknown as UserRow | undefined;
+  );
   if (!user) notFound();
 
   // 记录访问
-  db.prepare(
-    'INSERT INTO visits (user_id, day, count) VALUES (?, ?, 1) ON CONFLICT(user_id, day) DO UPDATE SET count = count + 1'
-  ).run(user.id, todayKey());
+  await dbRun(
+    'INSERT INTO visits (user_id, day, count) VALUES (?, ?, 1) ON CONFLICT(user_id, day) DO UPDATE SET count = count + 1',
+    user.id,
+    todayKey()
+  );
 
-  const links = db
-    .prepare('SELECT * FROM links WHERE user_id = ? AND enabled = 1 ORDER BY sort_order ASC, created_at ASC')
-    .all(user.id) as unknown as LinkRow[];
-  const tips = db
-    .prepare('SELECT * FROM tips WHERE user_id = ? AND enabled = 1 ORDER BY created_at ASC')
-    .all(user.id) as unknown as TipRow[];
+  const links = await dbAll<LinkRow>(
+    'SELECT * FROM links WHERE user_id = ? AND enabled = 1 ORDER BY sort_order ASC, created_at ASC',
+    user.id
+  );
+  const tips = await dbAll<TipRow>(
+    'SELECT * FROM tips WHERE user_id = ? AND enabled = 1 ORDER BY created_at ASC',
+    user.id
+  );
 
-  const greeting = getGreeting();
   const base = await getBaseUrl();
   const pageUrl = `${base}/u/${user.username}`;
   const qrDataUrl = await QRCode.toDataURL(pageUrl, { width: 320, margin: 1 });
@@ -72,13 +75,8 @@ export default async function PublicPage({ params }: { params: Promise<{ usernam
             {user.bio && <p className="mt-3 text-sm leading-relaxed">{user.bio}</p>}
           </div>
 
-          {/* 时辰节气问候 */}
-          <div className="lian-card mt-6 px-5 py-4 text-center">
-            <p className="text-sm font-medium">
-              {greeting.shichen} · {greeting.term}
-            </p>
-            <p className="mt-1 text-sm lian-muted">{greeting.text}</p>
-          </div>
+          {/* 时辰节气问候（访客本地时间） */}
+          <GreetingCard />
 
           {/* 链接 */}
           <div className="mt-6 space-y-3">

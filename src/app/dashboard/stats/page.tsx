@@ -1,5 +1,5 @@
 import { getSessionUser } from '@/lib/auth';
-import { getDb, type LinkRow } from '@/lib/db';
+import { dbAll, dbGet, type LinkRow } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,6 @@ interface DayBucket {
 export default async function StatsPage() {
   const user = await getSessionUser();
   if (!user) return null;
-  const db = getDb();
 
   const days: DayBucket[] = [];
   for (let i = 13; i >= 0; i--) {
@@ -24,26 +23,23 @@ export default async function StatsPage() {
       count: 0,
     });
   }
-  const rows = db
-    .prepare('SELECT day, count FROM visits WHERE user_id = ? AND day >= ?')
-    .all(user.id, days[0].key) as { day: string; count: number }[];
+  const rows = await dbAll<{ day: string; count: number }>(
+    'SELECT day, count FROM visits WHERE user_id = ? AND day >= ?',
+    user.id,
+    days[0].key
+  );
   const map = new Map(rows.map((r) => [r.day, r.count]));
   const chart = days.map((d) => ({ label: d.label, count: map.get(d.key) ?? 0 }));
   const max = Math.max(1, ...chart.map((c) => c.count));
 
-  const totalVisits = (
-    db.prepare('SELECT COALESCE(SUM(count), 0) AS s FROM visits WHERE user_id = ?').get(user.id) as {
-      s: number;
-    }
-  ).s;
-  const totalClicks = (
-    db.prepare('SELECT COALESCE(SUM(click_count), 0) AS s FROM links WHERE user_id = ?').get(
-      user.id
-    ) as { s: number }
-  ).s;
-  const links = db
-    .prepare('SELECT id, title, url, click_count FROM links WHERE user_id = ? ORDER BY click_count DESC')
-    .all(user.id) as Pick<LinkRow, 'id' | 'title' | 'url' | 'click_count'>[];
+  const totalVisits =
+    (await dbGet<{ s: number }>('SELECT COALESCE(SUM(count), 0) AS s FROM visits WHERE user_id = ?', user.id))?.s ?? 0;
+  const totalClicks =
+    (await dbGet<{ s: number }>('SELECT COALESCE(SUM(click_count), 0) AS s FROM links WHERE user_id = ?', user.id))?.s ?? 0;
+  const links = await dbAll<Pick<LinkRow, 'id' | 'title' | 'url' | 'click_count'>>(
+    'SELECT id, title, url, click_count FROM links WHERE user_id = ? ORDER BY click_count DESC',
+    user.id
+  );
 
   return (
     <div className="space-y-6">

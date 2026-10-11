@@ -1,33 +1,24 @@
 import Link from 'next/link';
 import { Eye, MousePointerClick, Link2, Plus, Palette, QrCode } from 'lucide-react';
 import { getSessionUser } from '@/lib/auth';
-import { getDb, type LinkRow } from '@/lib/db';
+import { dbAll, dbGet, type LinkRow } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardHome() {
   const user = await getSessionUser();
   if (!user) return null;
-  const db = getDb();
 
-  const totalVisits = (
-    db.prepare('SELECT COALESCE(SUM(count), 0) AS s FROM visits WHERE user_id = ?').get(user.id) as {
-      s: number;
-    }
-  ).s;
-  const totalClicks = (
-    db.prepare('SELECT COALESCE(SUM(click_count), 0) AS s FROM links WHERE user_id = ?').get(
-      user.id
-    ) as { s: number }
-  ).s;
-  const linkCount = (
-    db.prepare('SELECT COUNT(*) AS c FROM links WHERE user_id = ?').get(user.id) as { c: number }
-  ).c;
-  const topLinks = db
-    .prepare(
-      'SELECT id, title, click_count FROM links WHERE user_id = ? ORDER BY click_count DESC LIMIT 5'
-    )
-    .all(user.id) as Pick<LinkRow, 'id' | 'title' | 'click_count'>[];
+  const totalVisits =
+    (await dbGet<{ s: number }>('SELECT COALESCE(SUM(count), 0) AS s FROM visits WHERE user_id = ?', user.id))?.s ?? 0;
+  const totalClicks =
+    (await dbGet<{ s: number }>('SELECT COALESCE(SUM(click_count), 0) AS s FROM links WHERE user_id = ?', user.id))?.s ?? 0;
+  const linkCount =
+    (await dbGet<{ c: number }>('SELECT COUNT(*) AS c FROM links WHERE user_id = ?', user.id))?.c ?? 0;
+  const topLinks = await dbAll<Pick<LinkRow, 'id' | 'title' | 'click_count'>>(
+    'SELECT id, title, click_count FROM links WHERE user_id = ? ORDER BY click_count DESC LIMIT 5',
+    user.id
+  );
 
   const cards = [
     { icon: Eye, label: '主页总访问', value: totalVisits },

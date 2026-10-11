@@ -18,50 +18,75 @@
 
 - Next.js 15（App Router）+ React 19 + TypeScript
 - Tailwind CSS 4
-- SQLite（Node.js 24 内置 `node:sqlite`，**零原生依赖**，`npm install` 无需编译）
-- JWT（jose）+ scrypt 密码哈希
+- **Cloudflare Workers**（经 `@opennextjs/cloudflare` 适配）
+- **Cloudflare D1**（Serverless SQLite，免运维）
+- **Cloudflare R2**（头像 / 收款码等上传文件存储）
+- JWT（jose）+ PBKDF2-SHA256 密码哈希（WebCrypto，Workers 兼容）
 - 二维码（qrcode）
 
-## 快速开始
+## 本地开发
 
 ```bash
-# 1. 安装依赖（纯 JS，无需编译，无 403 问题）
 npm install
 
-# 2. 配置环境变量
-cp .env.example .env
-# 编辑 .env，把 LIAN_JWT_SECRET 换成随机长字符串
+# 本地 D1 建表（只需一次）
+npx wrangler d1 migrations apply lian-db --local
 
-# 3. 启动开发模式
+# 在 .dev.vars 里写：LIAN_JWT_SECRET=任意随机字符串
+
+# 方式一：普通 Next 开发模式（UI 调试最快）
 npm run dev
-# 打开 http://localhost:3000 注册第一个账号
 
-# 生产构建
-npm run build
-npm run start
+# 方式二：完整 Workers 环境预览（含本地 D1 / R2）
+npm run preview
 ```
 
-数据库文件自动创建在 `data/lian.db`，上传的图片保存在 `public/uploads/`（均已加入 .gitignore）。
+## 部署到 Cloudflare（推荐）
 
-## 部署
+### 准备工作（只需做一次）
 
-推荐部署到有持久化磁盘的平台（SQLite 是文件数据库）：
+1. 注册 [Cloudflare](https://dash.cloudflare.com) 账号，本地登录：
+   ```bash
+   npx wrangler login
+   ```
+2. 创建 D1 数据库和 R2 存储桶：
+   ```bash
+   npx wrangler d1 create lian-db
+   # 把返回的 database_id 填进 wrangler.toml 对应位置
+   npx wrangler r2 bucket create lian-uploads
+   ```
+3. 初始化线上表结构：
+   ```bash
+   npx wrangler d1 migrations apply lian-db --remote
+   ```
+4. 设置 JWT 密钥（机密，不要写进代码）：
+   ```bash
+   npx wrangler secret put LIAN_JWT_SECRET
+   ```
 
-- **VPS**（如云服务器）：`npm run build && npm run start`，用 pm2 / systemd 守护
-- **Railway / Fly.io**：挂载 Volume 到 `/app/data` 与 `/app/public/uploads`
-- **Vercel 等 Serverless**：不建议直连 SQLite（文件系统易失），如需可用 Turso 等 SQLite 云服务替换 `src/lib/db.ts`
+### 一键部署
 
-环境变量：
+```bash
+npm run deploy
+```
 
-| 变量 | 说明 | 必填 |
+成功后会得到 `https://lian.<你的子域名>.workers.dev`。建议在 Cloudflare 后台绑定自己的域名，
+然后在 `wrangler.toml` 的 `[vars]` 里填上 `LIAN_BASE_URL=https://你的域名`（二维码用），再 `npm run deploy` 一次。
+
+### 环境变量
+
+| 变量 | 位置 | 说明 |
 |---|---|---|
-| `LIAN_JWT_SECRET` | JWT 签名密钥，生产务必更换 | 是 |
-| `LIAN_BASE_URL` | 公开主页域名（如 `https://lian.example.com`），用于二维码；不填则自动推断 | 否 |
-| `PORT` | 监听端口，默认 3000 | 否 |
+| `LIAN_JWT_SECRET` | `wrangler secret` / `.dev.vars` | JWT 签名密钥，生产务必更换 |
+| `LIAN_BASE_URL` | `wrangler.toml [vars]` | 公开主页域名，用于二维码；不填则自动推断 |
 
 ## 项目结构
 
 ```
+wrangler.toml                 # Cloudflare 部署配置（D1 / R2 绑定）
+open-next.config.ts           # OpenNext Cloudflare 构建配置
+cloudflare-env.d.ts           # 绑定类型（wrangler types 可重新生成）
+migrations/0001_init.sql      # D1 表结构迁移
 src/
 ├── app/
 │   ├── page.tsx                 # 落地页
@@ -69,12 +94,13 @@ src/
 │   ├── dashboard/               # 创作者控制台（总览/链接/外观/打赏/数据/设置）
 │   ├── u/[username]/page.tsx    # 公开主页
 │   ├── r/[id]/route.ts          # 链接点击统计跳转
+│   ├── uploads/[...key]/route.ts # R2 文件服务（头像/收款码）
 │   └── api/                     # 后端 API（auth/profile/links/tips/upload/stats）
-├── components/                  # 交互组件
+├── components/                  # 交互组件（含 GreetingCard 时辰问候）
 └── lib/
-    ├── db.ts                    # node:sqlite 数据层与表结构
-    ├── auth.ts                  # 密码哈希 / JWT / 会话
-    ├── greetings.ts             # 时辰与节气
+    ├── db.ts                    # D1 数据层（异步）
+    ├── auth.ts                  # PBKDF2 密码哈希 / JWT / 会话
+    ├── greetings.ts             # 时辰与节气（客户端按访客时区计算）
     ├── themes.ts                # 六套主题定义
     ├── site.ts                  # 站点域名推断
     └── api.ts                   # API 工具函数

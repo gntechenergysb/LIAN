@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
-const nextConfig: NextConfig = {
-  // node:sqlite 为 Node.js 内置模块，无需列入 serverExternalPackages
-};
+const nextConfig: NextConfig = {};
+
+// 让 `npm run dev` 也能拿到 D1 / R2 等本地绑定
+initOpenNextCloudflareForDev();
 
 export default nextConfig;

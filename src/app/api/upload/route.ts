@@ -1,6 +1,4 @@
-import crypto from 'node:crypto';
-import path from 'node:path';
-import fs from 'node:fs';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { ok, fail } from '@/lib/api';
 import { requireAuth } from '@/lib/api';
 
@@ -12,6 +10,12 @@ const EXT: Record<string, string> = {
   'image/webp': '.webp',
   'image/gif': '.gif',
 };
+
+function randomHex(bytes: number): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(bytes)))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 export async function POST(req: Request) {
   const auth = await requireAuth();
@@ -29,10 +33,11 @@ export async function POST(req: Request) {
   if (file.size > MAX_SIZE) return fail('图片不能超过 5MB');
   if (file.size === 0) return fail('图片文件为空');
 
-  const buf = Buffer.from(await file.arrayBuffer());
-  const name = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${EXT[file.type]}`;
-  const dir = path.join(process.cwd(), 'public', 'uploads');
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, name), buf);
+  const name = `${Date.now()}-${randomHex(8)}${EXT[file.type]}`;
+  const key = `uploads/${name}`;
+  const { env } = getCloudflareContext();
+  await env.UPLOADS.put(key, await file.arrayBuffer(), {
+    httpMetadata: { contentType: file.type },
+  });
   return ok({ path: `/uploads/${name}` }, 201);
 }

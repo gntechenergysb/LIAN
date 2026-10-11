@@ -1,4 +1,4 @@
-import { getDb } from '@/lib/db';
+import { dbGet, dbRun } from '@/lib/db';
 import { verifyPassword, hashPassword } from '@/lib/auth';
 import { ok, fail, readJson } from '@/lib/api';
 import { requireAuth } from '@/lib/api';
@@ -13,16 +13,13 @@ export async function POST(req: Request) {
   if (new_password.length < 6 || new_password.length > 72) {
     return fail('新密码长度需为 6–72 位');
   }
-  const db = getDb();
-  const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(auth.id) as {
-    password_hash: string;
-  };
-  if (!verifyPassword(old_password, row.password_hash)) {
-    return fail('原密码不正确', 401);
-  }
-  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(
-    hashPassword(new_password),
+  const row = await dbGet<{ password_hash: string }>(
+    'SELECT password_hash FROM users WHERE id = ?',
     auth.id
   );
+  if (!row || !(await verifyPassword(old_password, row.password_hash))) {
+    return fail('原密码不正确', 401);
+  }
+  await dbRun('UPDATE users SET password_hash = ? WHERE id = ?', await hashPassword(new_password), auth.id);
   return ok({ changed: true });
 }

@@ -1,64 +1,32 @@
-import { DatabaseSync } from 'node:sqlite';
-import path from 'node:path';
-import fs from 'node:fs';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { cache } from 'react';
 
-const DB_PATH = path.join(process.cwd(), 'data', 'lian.db');
+// ---- Cloudflare D1 数据层 ----
+// D1 是 Cloudflare 的 Serverless SQLite，SQL 方言与 node:sqlite 兼容。
+// Workers 里不允许模块级全局连接，因此用 per-request 的 cache() 模式。
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __lianDb: DatabaseSync | undefined;
+export const getD1 = cache(() => getCloudflareContext().env.DB);
+
+export async function dbAll<T>(sql: string, ...params: unknown[]): Promise<T[]> {
+  const { results } = await getD1().prepare(sql).bind(...params).all<T>();
+  return results ?? [];
 }
 
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS users (
-  id TEXT PRIMARY KEY,
-  username TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  display_name TEXT DEFAULT '',
-  bio TEXT DEFAULT '',
-  avatar_path TEXT DEFAULT '',
-  theme TEXT DEFAULT 'xuanzhi',
-  elder_mode INTEGER DEFAULT 0,
-  created_at INTEGER NOT NULL
-);
-CREATE TABLE IF NOT EXISTS links (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  url TEXT NOT NULL,
-  sort_order INTEGER DEFAULT 0,
-  enabled INTEGER DEFAULT 1,
-  click_count INTEGER DEFAULT 0,
-  created_at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_links_user ON links(user_id, sort_order);
-CREATE TABLE IF NOT EXISTS tips (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  provider TEXT NOT NULL,
-  label TEXT DEFAULT '',
-  qr_path TEXT DEFAULT '',
-  enabled INTEGER DEFAULT 1,
-  created_at INTEGER NOT NULL
-);
-CREATE TABLE IF NOT EXISTS visits (
-  user_id TEXT NOT NULL,
-  day TEXT NOT NULL,
-  count INTEGER DEFAULT 0,
-  PRIMARY KEY (user_id, day)
-);
-`;
-
-export function getDb(): DatabaseSync {
-  if (!globalThis.__lianDb) {
-    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    const db = new DatabaseSync(DB_PATH);
-    db.exec('PRAGMA journal_mode = WAL;');
-    db.exec(SCHEMA);
-    globalThis.__lianDb = db;
-  }
-  return globalThis.__lianDb;
+export async function dbGet<T>(sql: string, ...params: unknown[]): Promise<T | null> {
+  const row = await getD1().prepare(sql).bind(...params).first<T>();
+  return row ?? null;
 }
+
+export async function dbRun(sql: string, ...params: unknown[]): Promise<void> {
+  await getD1().prepare(sql).bind(...params).run();
+}
+
+export async function dbBatch(items: { sql: string; params: unknown[] }[]): Promise<void> {
+  const db = getD1();
+  await db.batch(items.map(({ sql, params }) => db.prepare(sql).bind(...params)));
+}
+
+// ---- 行类型 ----
 
 export interface UserRow {
   id: string;
@@ -91,9 +59,4 @@ export interface TipRow {
   qr_path: string;
   enabled: number;
   created_at: number;
-}
-
-export function publicUser(row: UserRow) {
-  const { password_hash: _ph, ...rest } = row;
-  return rest;
 }
