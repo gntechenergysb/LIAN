@@ -11,7 +11,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "lian-db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "a4a69d18-4416-41d6-ac67-b37fd934e975"
 
 # ---- R2 对象存储（头像 / 收款码上传）----
 # 先运行：npx wrangler r2 bucket create lian-uploads
